@@ -30,3 +30,5 @@ def bigquery_run(sql_file_path, env,project,batch_id):
     except Exception as e:
         print(f"Failed to execute SQL file: {e}")
         sys.exit(1)
+
+    
