@@ -69,7 +69,7 @@ def execute_transform(spark,input_df,tgt_df):
                             'gosales' as source,
                             'I' AS oper,
                             999  as table_id    
-                            from (select distinct retailer_name from method_input_tbl) src
+                            from (select distinct retailer_name from retailer_input_tbl) src
                             left join retailer_hlp_tbl tgt on lower(src.retailer_name)=lower(tgt.retailer_name)
                             CROSS JOIN
                             (   
