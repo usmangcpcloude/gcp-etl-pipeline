@@ -16,7 +16,6 @@ cast(sum(sf.selling_unit_price) as bigint) as selling_unit_price,
 cast(sum(sf.selling_unit_price*sell_quantity) as bigint) as sales_amount,
 CURRENT_TIMESTAMP() AS ins_tmstmp, 
 CURRENT_TIMESTAMP() AS upd_tmstmp, 
-999 as table_id, 
 '{batch_id}' AS batch_id,  -- Ensure batch_id is passed correctly
 'I' AS oper
 from  `{project}.{env}_curated.sales_fact`  sf
