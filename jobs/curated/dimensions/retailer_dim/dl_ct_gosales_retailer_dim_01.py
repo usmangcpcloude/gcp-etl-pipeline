@@ -66,13 +66,14 @@ def execute_transform(spark,input_df_raw,input_df_hlp,tgt_df):
 
     retailer_dim = spark.sql("""select 
                             hlp.retailer_key as retailer_key,
+                            src.retailer_name as retailer_name,
                             src.retailer_type as retailer_type,
                             src.country as country,
                             'gosales' as source,
                             'I' AS oper,
                             999  as table_id    
                             from retailer_input_raw src
-                            inner join retailer_input_hlp hlp on lower(src.retailer_name)=lower(hlp.retailer_name) 
+                            inner join retailer_input_hlp hlp on lower(src.retailer_code)=lower(hlp.retailer_code) 
                             left join retailer_dim tgt on hlp.retailer_key=tgt.retailer_key
                             where tgt.retailer_key is null
                             """
@@ -104,7 +105,7 @@ if __name__ == "__main__":
 
     job_name = "retailer_dim"
     tabl_name = "retailer_dim"
-    usecase="helpings"
+    usecase="dimensions"
     env = "dev"
     batch_id = "999"
 

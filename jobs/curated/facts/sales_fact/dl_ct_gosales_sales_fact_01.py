@@ -59,27 +59,33 @@ def add_meta_info(input_df, batch_id):
 
 
 
-def execute_transform(spark,input_df,tgt_df):    
-    retailer_input = input_df.createOrReplaceTempView('retailer_input_tbl')
-    retailer_hlp = tgt_df.createOrReplaceTempView('retailer_hlp_tbl')
+def execute_transform(spark,input_df_methods,input_df_sales,input_df_retailer_hlp,input_df_method_hlp,input_df_product_lkp):    
+    methods_input = input_df_methods.createOrReplaceTempView('input_df_methods_tbl')
+    sales_input = input_df_sales.createOrReplaceTempView('input_df_sales_tbl')
+    retailer_hlp_input = input_df_retailer_hlp.createOrReplaceTempView('input_df_retailer_hlp_tbl')
+    method_hlp_input = input_df_method_hlp.createOrReplaceTempView('input_df_method_hlp_tbl')
+    product_lkp_input = input_df_product_lkp.createOrReplaceTempView('input_df_product_lkp_tbl')
 
-    retailer_hlp = spark.sql("""select 
-                            max_key+SUM(1) OVER(ROWS UNBOUNDED PRECEDING) as retailer_key,
-                            src.retailer_code as retailer_code,
-                            'gosales' as source,
-                            'I' AS oper,
-                            999  as table_id    
-                            from (select distinct retailer_code from retailer_input_tbl) src
-                            left join retailer_hlp_tbl tgt on lower(src.retailer_name)=lower(tgt.retailer_name)
-                            CROSS JOIN
-                            (   
-                            SELECT coalesce (MAX (retailer_key),0) AS max_key
-                                        FROM retailer_hlp_tbl
-                                    ) ds
-                            where tgt.retailer_key is null
-                            """
-                            )
-    final_df = add_meta_info(retailer_hlp, batch_id)
+    sales_fact = spark.sql("""select 
+                                rh.retailer_key as retailer_key,
+                                pl.product_key as product_key,
+                                mh.method_key,
+                                src.sale_date,
+                                cast(src.quantity as int) as sell_quantity,
+                                cast(pl.unit_price as float) as buying_unit_price,
+                                cast(src.unit_price as float) as ask_selling_unit_price,
+                                cast(src.unit_sale_price as float)selling_unit_price,
+                                'gosales' as source,
+                                'I' AS oper,
+                                999  as table_id    
+                                from (select * from input_df_sales_tbl) src
+                                left join input_df_retailer_hlp_tbl rh on lower(src.retailer_code)=lower(rh.retailer_code)
+                                left join input_df_product_lkp_tbl pl on lower(src.product_number)=lower(pl.product_number)
+                                left join input_df_methods_tbl mt on lower(src.order_method_code)=lower(mt.order_method_code)
+                                left join input_df_method_hlp_tbl mh on lower(mt.order_method_type)=lower(mh.method_name)
+                                """
+                                )
+    final_df = add_meta_info(sales_fact, batch_id)
     return final_df
 
 #batch_id,table_id,raw_ins_tmstmp,upd_tmstmp
@@ -104,9 +110,9 @@ if __name__ == "__main__":
     #         "ERROR: Incomplete input arguments. Please provide <job_name>,<tbl_name>,<env>,<batch_id>")
     #     exit(1)
 
-    job_name = "retailer_hlp"
-    tabl_name = "retailer_hlp"
-    usecase="helpings"
+    job_name = "sales_fact"
+    tabl_name = "sales_fact"
+    usecase="facts"
     env = "dev"
     batch_id = "999"
 
@@ -138,10 +144,14 @@ if __name__ == "__main__":
 
     try:
         logger.info("Started Loading Data")
-        input_df=load_csv_file(spark,RAW_BUCKET+'gosales/go_retailers.csv')
-        tgt_df = load_parquet_file(spark,TARGET_PATH)
+        input_df_methods=load_csv_file(spark,RAW_BUCKET+'gosales/go_methods.csv')
+        input_df_sales=load_csv_file(spark,RAW_BUCKET+'gosales/go_daily_sales.csv')
+        input_df_retailer_hlp=load_parquet_file(spark,CURATED_BUCKET+'helpings/retailer_hlp')
+        input_df_method_hlp=load_parquet_file(spark,CURATED_BUCKET+'helpings/method_hlp')
+        input_df_product_lkp=load_parquet_file(spark,CURATED_BUCKET+'lookups/product_lkp')
     except Exception as e:
         print("Error Occurred while loading data from raw layer")
+        print(e)
         
 
     ##############################################################################
@@ -150,7 +160,7 @@ if __name__ == "__main__":
 
     try:
         logger.info("Started Transforming Data")
-        transformed_df = execute_transform(spark,input_df,tgt_df).persist(StorageLevel.MEMORY_AND_DISK)
+        transformed_df = execute_transform(spark,input_df_methods,input_df_sales,input_df_retailer_hlp,input_df_method_hlp,input_df_product_lkp).persist(StorageLevel.MEMORY_AND_DISK)
         rows_ingested = transformed_df.count()
         job_meta_details.ROWS_INGESTED = rows_ingested
     except Exception as e:
@@ -163,7 +173,7 @@ if __name__ == "__main__":
     try:
         logger.info("Started Writing Data")
         if rows_ingested>0:        
-            transformed_df.write.format("parquet").mode("append").save(TARGET_PATH)
+            transformed_df.write.format("parquet").mode("overwrite").save(TARGET_PATH)
         else:
             print("No More Data From Source")
         job_meta_details.JOB_STATUS = 'SUCCESS'
