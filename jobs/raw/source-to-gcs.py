@@ -15,7 +15,7 @@ import codecs
 from typing import NamedTuple
 from apache_beam import coders
 
-service_account_json = "service-account-compute-addo.json"
+service_account_json = "commons/service-account-compute-addo.json"
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = service_account_json
 
 

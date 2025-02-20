@@ -1,0 +1,16 @@
+.idea
+.vscode
+etl.iml
+*.pyc
+.vscode
+venv
+htmlcov
+/junk
+.coverage
+*.log
+*.out
+*.java
+configs/env_variables.py
+.vscode/
+/junk
+*.json
