@@ -8,7 +8,7 @@ script_dir_format=script_dir
 jobs_dir = os.path.dirname(script_dir)
 project_root = os.path.dirname(jobs_dir)
 sys.path.append(project_root)
-from configs.env_variables import *
+from configs.db_configs import *
 from commons.utilities import  *
 
 if __name__ == "__main__":
@@ -26,5 +26,5 @@ if __name__ == "__main__":
 
     # Run the SQL file on BigQuery
     sql_file_path = os.path.normpath(os.path.join(script_dir_format, use_case, sql_file))
-    project = variables['project']
+    project,mysql_etl_monitoring=env_configs(env)
     bigquery_run(sql_file_path, env,project,batch_id)        

@@ -24,11 +24,10 @@ sql_to_python = {
 # Extract column names and their data types
 columns = data['go_methods']['Column_names']
 column_types = data['go_methods']['data_type']
-print(columns)
-print(column_types)
+
 # Convert dictionary to a list of tuples (name, type)
 fields = [(col, sql_to_python[column_types[col]]) for col in columns]
-print(fields)
+
 # Dynamically create the NamedTuple class
 ExampleRow = NamedTuple('ExampleRow', fields)
 
@@ -37,4 +36,3 @@ row = ExampleRow(order_method_code=123, order_method_type="Online")
 print(row)
 print(row.order_method_code, type(row.order_method_code))
 print(row.order_method_type, type(row.order_method_type))
- 
