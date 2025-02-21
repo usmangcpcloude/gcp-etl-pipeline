@@ -2,9 +2,15 @@ from google.cloud import secretmanager
 import json
 import sys
 import os
-import json
 from datetime import datetime,timedelta
 from google.cloud import bigquery
+import apache_beam as beam
+from apache_beam.options.pipeline_options import PipelineOptions
+from apache_beam.io.jdbc import ReadFromJdbc
+from apache_beam.io.parquetio import WriteToParquet
+import logging
+import argparse
+import pyarrow
 script_dir = os.path.dirname(os.path.abspath(__file__))  
 script_dir_format=script_dir
 jobs_dir = os.path.dirname(script_dir)
@@ -13,7 +19,13 @@ sys.path.append(project_root)
 from configs.db_configs import *
 from commons.utilities import  *
 from commons.Job_Meta_Details import Job_Meta_Details
+from configs.env_variables import variables
 
+service_account_json = "commons/service-account-compute-addo.json"
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = service_account_json
+runner = variables['runner']
+temp_location = variables['temp_bucket']
+setup_file_path = "jobs/raw/setup.py"
 
 
 if __name__ == "__main__":
@@ -42,7 +54,7 @@ if __name__ == "__main__":
             end_date = ""
 
         # Open a MySQL database connection
-        project,mysql_etl_monitoring=env_configs(env)
+        project,region,mysql_etl_monitoring=env_configs(env)
         print("Trying to Open MYSQL connection",flush =True)
         MySQLConnection=openMySQLConnection(mysql_etl_monitoring,project)
         print("MySQLConnection connection successful", flush =True)
@@ -57,7 +69,8 @@ if __name__ == "__main__":
         Job_Meta_Details = Job_Meta_Details(batch_id, '-1', db_name, None, table_name, "RAW", -1, datetime.now(), None, None, "Failure", None, None,None,None,'dl_rw_job')
         print("Job_Meta_Details created", flush =True)
     except Exception as e:
-        print("Usage: python script.py <mysql_source_system> <db_name> <table_schema> <table_name> <env> <batch_id>")    
+        print("Usage: python script.py <mysql_source_system> <db_name> <table_schema> <table_name> <env> <batch_id>")  
+        exit(1)  
 
     try: 
         # print ("Getting Ingestion_metadata arguments")
@@ -92,26 +105,47 @@ if __name__ == "__main__":
 
         db_secret_name=env_results[0]
         env_staging_bucket=env_results[1]
-        env_staging_bucket=env_results[2]  
+        env_raw_bucket=env_results[2]  
 
         # GETTING COLUMN NAMES,MERGE COLUMNS, DATA TYPE , SQL QUERY AND HEADER
 
         column_names, merge_column, data_types,sql_query,header = parse_table_defination(table_definations,table_name)
 
-        # CREATING EXAMPLE ROW TUPE
-        ExampleRow=create_named_tuple(column_names,data_types)
-        print(sql_query)
-        print(header)
-        print(ExampleRow)
-        row = ExampleRow(order_method_code=123, order_method_type="Online")
-        print(row)
-
-        # GETTING DATABASE CREDENTIALS FROM SECRET MANAGE
-        host, username, password, database,ssl=get_credentials(db_secret_name,project)
-        print(database)
     except Exception as e:
         print("Exception occurred during ingestion parameter retrieval")
-        
+        print(e)
+        exit(1)  
+
+    try:
+        print("Define pipeline options", flush=True)
+        pipeline_options = PipelineOptions(
+                                    runner=runner,
+                                    project=project,
+                                    region=region,
+                                    temp_location=temp_location,
+                                    job_name=source_system.lower().replace("_", "-")+'-'+db_name.lower().replace("_", "-")+'-'+table_name.lower().replace("_", "-")+'-'+raw_bucket,
+                                    setup_file=setup_file_path
+
+                                )
+    except Exception as e:
+        print("Exception occurred during defining pipeline options")
+        print(e)
+        exit(1)  
+
+    try:
+        print("Running Data Flow Pipeline", flush=True)
+        dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_name,project,data_types,column_names)
+    except Exception as e:
+        print("Exception occurred during Running Dataflow Pipeline")
+        print(e)
+        exit(1)  
+
+
+
+
+
+
+
 
 
 

@@ -5,5 +5,7 @@ variables = {
     'task' : 'task_metatable',
     'ingestion' : 'ingestion_metadata',
     'operational' : 'operational_metadata',
-    'catalog': 'catalog_metadata'
+    'catalog': 'catalog_metadata',
+    'runner':'DirectRunner',
+    'temp_bucket':'gs://tempfiles-0001'
     }

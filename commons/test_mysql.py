@@ -1,40 +1,35 @@
-from typing import NamedTuple
+# Define column names and types
+col_names = "['id', 'retailer_code', 'product_number', 'order_method_code', 'sale_date', 'quantity', 'unit_price', 'unit_sale_price']"
+col_types = "{'id': 'bigint', 'retailer_code': 'bigint', 'product_number': 'bigint', 'order_method_code': 'bigint', 'sale_date': 'date', 'quantity': 'bigint', 'unit_price': 'bigint', 'unit_sale_price': 'bigint'}"
 
-# Input dictionary
-data = {
-    'go_methods': {
-        'Column_names': ['order_method_code', 'order_method_type'],
-        'data_type': {
-            'order_method_code': 'bigint',
-            'order_method_type': 'varchar(255)'
-        },
-        'merge_column': [],
-        'partition_on': [],
-        'masking_column': [],
-        'partition_column': []
-    }
-}
+# Convert col_names and col_types to Python objects
+import ast
 
-# Mapping of SQL types to Python types
-sql_to_python = {
-    'bigint': int,
-    'varchar(255)': str
-}
+# Parse column names
+col_names_list = ast.literal_eval(col_names)
 
-# Extract column names and their data types
-columns = data['go_methods']['Column_names']
-column_types = data['go_methods']['data_type']
-print(columns)
-print(column_types)
-# Convert dictionary to a list of tuples (name, type)
-fields = [(col, sql_to_python[column_types[col]]) for col in columns]
-print(fields)
-# Dynamically create the NamedTuple class
-ExampleRow = NamedTuple('ExampleRow', fields)
+# Parse column types
+col_types_dict = ast.literal_eval(col_types)
 
-# Test the class
-row = ExampleRow(order_method_code=123, order_method_type="Online")
-print(row)
-print(row.order_method_code, type(row.order_method_code))
-print(row.order_method_type, type(row.order_method_type))
- 
+# Function to convert Beam Row object to a dictionary dynamically
+def row_to_dict(row):
+    return {name: convert_type(row[i], col_types_dict[name]) for i, name in enumerate(col_names_list)}
+
+# Function to convert types based on col_types
+def convert_type(value, col_type):
+    if col_type == 'bigint':
+        return int(value)
+    elif col_type == 'date':
+        return str(value)  # Adjust as needed for date formatting
+    elif col_type == 'float':
+        return float(value)
+    else:
+        return str(value)
+
+# Define Parquet schema dynamically
+import pyarrow
+
+parquet_schema = pyarrow.schema([
+    (name, pyarrow.int64() if col_type == 'bigint' else pyarrow.string() if col_type == 'string' else pyarrow.float64() if col_type == 'float' else pyarrow.string())
+    for name, col_type in col_types_dict.items()
+])

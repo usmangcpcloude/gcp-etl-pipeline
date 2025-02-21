@@ -8,6 +8,14 @@ import mysql.connector
 import ast
 from google.cloud import bigquery
 from typing import NamedTuple
+import apache_beam as beam
+from apache_beam.options.pipeline_options import PipelineOptions
+from apache_beam.io.jdbc import ReadFromJdbc
+from apache_beam.io.parquetio import WriteToParquet
+import logging
+import argparse
+import pyarrow
+
 script_dir = os.path.dirname(os.path.abspath(__file__))  
 script_dir_format=script_dir
 jobs_dir = os.path.dirname(script_dir)
@@ -54,9 +62,10 @@ def env_configs(env):
     try:
         if env =="dev" or env == "prod":
             project = configs[env]['project']
+            region = configs[env]['region']
             mysql_etl_monitoring = configs[env]['mysql_etl_monitoring']
             return (
-                project, mysql_etl_monitoring
+                project,region, mysql_etl_monitoring
             )
         else:
             print(f"Environment '{env}' not found in configuration.")
@@ -139,8 +148,8 @@ def add_env_prefix(env, secret_name, staging_bucket, raw_bucket):
     prefix = "dd_" if env == "dev" else "dp_"
     
     secret_name = f"{prefix}{secret_name}"
-    staging_bucket = f"{prefix}{staging_bucket}"
-    raw_bucket = f"{prefix}{raw_bucket}"
+    staging_bucket = f"gs://{prefix}{staging_bucket}"
+    raw_bucket = f"gs://{prefix}{raw_bucket}"
     
     return secret_name, staging_bucket, raw_bucket
     
@@ -196,3 +205,84 @@ def create_named_tuple(column_names,data_types):
         return ExampleRow
     except Exception as e:
         return f"Error creating NamedTuple: {str(e)}"
+
+
+def convert_type(value, col_type):
+    if value is None:
+        return None  # Handle NULL values    
+    try:
+        if col_type in ['tinyint', 'smallint', 'mediumint', 'int', 'bigint']:
+            return int(value)
+        elif col_type in ['float', 'double', 'decimal', 'numeric']:
+            return float(value)
+        elif col_type in ['date']:
+            return str(value)  # Store dates as strings in 'YYYY-MM-DD' format
+        elif col_type in ['datetime', 'timestamp']:
+            return str(value)  # Store datetime as string 'YYYY-MM-DD HH:MM:SS'
+        elif col_type in ['time']:
+            return str(value)  # Store time as string 'HH:MM:SS'
+        elif col_type in ['year']:
+            return int(value)  # Store year as integer
+        elif col_type in ['char', 'varchar', 'text', 'tinytext', 'mediumtext', 'longtext']:
+            return str(value)
+        elif col_type in ['binary', 'varbinary', 'blob', 'tinyblob', 'mediumblob', 'longblob']:
+            return bytes(value)  # Store binary as raw bytes
+        elif col_type in ['bit']:
+            return int.from_bytes(value, byteorder='big')  # Convert bit field to integer
+        else:
+            return str(value)  # Default fallback to string
+    except Exception as e:
+        print(f"Error converting value {value} of type {col_type}: {e}")
+        return None  # Handle conversion errors safely
+
+
+
+def dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_name,project,data_types,column_names):
+    host, username, password, database,ssl=get_credentials(db_secret_name,project)
+    
+    parquet_schema = pyarrow.schema([
+    (name,
+        pyarrow.int32() if col_type in ['tinyint', 'smallint', 'mediumint', 'int', 'year'] else
+        pyarrow.int64() if col_type == 'bigint' else
+        pyarrow.float32() if col_type == 'float' else
+        pyarrow.float64() if col_type in ['double', 'decimal', 'numeric'] else
+        pyarrow.string() if col_type in ['char', 'varchar', 'text', 'tinytext', 'mediumtext', 'longtext'] else
+        pyarrow.string() if col_type in ['date', 'datetime', 'timestamp', 'time'] else
+        pyarrow.binary() if col_type in ['binary', 'varbinary', 'blob', 'tinyblob', 'mediumblob', 'longblob'] else
+        pyarrow.int32() if col_type == 'bit' else
+        pyarrow.string()  # Default fallback to string
+        )
+        for name, col_type in data_types.items()
+                    ])
+    
+    sql_query = f"""
+                    SELECT 
+                        {', '.join(
+                            f"CAST({name} AS CHAR) AS {name}" if data_types[name] in ['date', 'timestamp'] else name
+                            for name in column_names
+                        )}
+                    FROM {database}.{table_name}
+                    """
+    def row_to_dict(row):
+        return {name: convert_type(row[i], data_types[name]) for i, name in enumerate(column_names)}
+
+    with beam.Pipeline(options=pipeline_options) as pipeline:
+        mysql_data = (
+            pipeline 
+            | 'Read from MySQL' >> ReadFromJdbc(
+                driver_class_name='com.mysql.cj.jdbc.Driver',
+                jdbc_url="jdbc:mysql://"+host+":3306/"+database,
+                username=username,
+                password=password,
+                query=sql_query,
+                table_name=database+'.'+table_name
+            )
+            | 'Convert Row to Dict' >> beam.Map(row_to_dict)
+        )
+        
+        # Write data to Parquet format in GCS
+        mysql_data | 'Write to Parquet' >> WriteToParquet(
+            file_path_prefix=env_raw_bucket+'/'+database+'/'+table_name +'/'+ table_name,
+            schema=parquet_schema,
+            file_name_suffix='.parquet'
+        )

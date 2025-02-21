@@ -1,0 +1,8 @@
+README.md
+dl_rw_job.py
+setup.py
+spanner_to_gcs.egg-info/PKG-INFO
+spanner_to_gcs.egg-info/SOURCES.txt
+spanner_to_gcs.egg-info/dependency_links.txt
+spanner_to_gcs.egg-info/requires.txt
+spanner_to_gcs.egg-info/top_level.txt
