@@ -144,8 +144,8 @@ if __name__ == "__main__":
 
     try:
         logger.info("Started Loading Data")
-        input_df_methods=load_csv_file(spark,RAW_BUCKET+'gosales/go_methods.csv')
-        input_df_sales=load_csv_file(spark,RAW_BUCKET+'gosales/go_daily_sales.csv')
+        input_df_methods=load_parquet_file(spark,RAW_BUCKET+'gosales/go_methods/*.parquet')
+        input_df_sales=load_parquet_file(spark,RAW_BUCKET+'gosales/go_daily_sales/*.parquet')
         input_df_retailer_hlp=load_parquet_file(spark,CURATED_BUCKET+'helpings/retailer_hlp')
         input_df_method_hlp=load_parquet_file(spark,CURATED_BUCKET+'helpings/method_hlp')
         input_df_product_lkp=load_parquet_file(spark,CURATED_BUCKET+'lookups/product_lkp')

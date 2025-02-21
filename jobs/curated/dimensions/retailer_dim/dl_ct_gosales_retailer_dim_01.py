@@ -137,7 +137,7 @@ if __name__ == "__main__":
 
     try:
         logger.info("Started Loading Data")
-        input_df_raw=load_csv_file(spark,RAW_BUCKET+'gosales/go_retailers.csv')
+        input_df=load_parquet_file(spark,RAW_BUCKET+'gosales/go_retailers/*.parquet')
         input_df_hlp=load_parquet_file(spark,CURATED_BUCKET+'helpings/retailer_hlp')
         tgt_df = load_parquet_file(spark,TARGET_PATH)
     except Exception as e:

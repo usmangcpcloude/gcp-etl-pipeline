@@ -278,6 +278,7 @@ def dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_n
                 table_name=database+'.'+table_name
             )
             | 'Convert Row to Dict' >> beam.Map(row_to_dict)
+            | 'Strip Whitespace' >> beam.Map(lambda row: {k: v.strip() if isinstance(v, str) else v for k, v in row.items()})  # Strip \r and spaces
         )
         
         # Write data to Parquet format in GCS

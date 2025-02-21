@@ -138,7 +138,7 @@ if __name__ == "__main__":
 
     try:
         logger.info("Started Loading Data")
-        input_df=load_csv_file(spark,RAW_BUCKET+'gosales/go_methods.csv')
+        input_df=load_parquet_file(spark,RAW_BUCKET+'gosales/go_methods/*.parquet')
         tgt_df = load_parquet_file(spark,TARGET_PATH)
     except Exception as e:
         print("Error Occurred while loading data from raw layer")
