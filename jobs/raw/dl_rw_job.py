@@ -70,8 +70,7 @@ if __name__ == "__main__":
         print("Job_Meta_Details created", flush =True)
     except Exception as e:
         print("Usage: python script.py <mysql_source_system> <db_name> <table_schema> <table_name> <env> <batch_id>")  
-        exit(1)  
-
+        record_exception(Job_Meta_Details, e, "Failed during Getting Arguements From User.",MySQLConnection)
     try: 
         # print ("Getting Ingestion_metadata arguments")
         print("Getting Ingestion_metadata arguments", flush=True)
@@ -113,8 +112,7 @@ if __name__ == "__main__":
 
     except Exception as e:
         print("Exception occurred during ingestion parameter retrieval")
-        print(e)
-        exit(1)  
+        record_exception(Job_Meta_Details, e, "Failed during data selectIngestionParams.",MySQLConnection)
 
     try:
         print("Define pipeline options", flush=True)
@@ -129,16 +127,16 @@ if __name__ == "__main__":
                                 )
     except Exception as e:
         print("Exception occurred during defining pipeline options")
-        print(e)
-        exit(1)  
-
+        record_exception(Job_Meta_Details, e, "Failed during Setting DataFlow Pipeline Options.",MySQLConnection)
     try:
         print("Running Data Flow Pipeline", flush=True)
         dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_name,project,data_types,column_names)
+        Job_Meta_Details.JOB_STATUS = "SUCCESS"
+            # Upsert (update or insert) job metadata information
+        upsert_meta_info(Job_Meta_Details, MySQLConnection)
     except Exception as e:
         print("Exception occurred during Running Dataflow Pipeline")
-        print(e)
-        exit(1)  
+        record_exception(Job_Meta_Details, e, "Failed during Ingestion Data Using Dataflow.",MySQLConnection)
 
 
 

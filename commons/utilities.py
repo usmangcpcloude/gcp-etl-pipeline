@@ -15,6 +15,7 @@ from apache_beam.io.parquetio import WriteToParquet
 import logging
 import argparse
 import pyarrow
+import re
 
 script_dir = os.path.dirname(os.path.abspath(__file__))  
 script_dir_format=script_dir
@@ -287,3 +288,124 @@ def dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_n
             schema=parquet_schema,
             file_name_suffix='.parquet'
         )
+
+
+
+###################################################################################################################
+#                                             SECTION: utilities.py                                    #
+###################################################################################################################
+#################################################################################
+#
+#    Name :  runMySQLQuery()
+#    Purpose: this function is responsible for executing mysql query based on select type operator in a params
+#    ----------------------------------------------------------------------------
+#
+#    Parameters :  connection, query, data, statement_type
+#                 
+#    ----------------------------------------------------------------------------
+#
+#    Return Type : None
+#
+#################################################################################
+def runMySQLQuery(connection, query, data, statement_type='SELECT'):
+    cursor = connection.cursor()
+    # Execute the appropriate SQL statement based on the statement_type parameter
+    if statement_type == 'SELECT':
+        cursor.execute(query, data) 
+        result = cursor.fetchall()
+        cursor.close()
+        return result
+    elif statement_type == 'INSERT':
+        cursor.execute(query, data)
+        connection.commit()
+        cursor.close()
+    elif statement_type == 'UPDATE':
+        cursor.execute(query, data)
+        connection.commit()
+        cursor.close()
+    else:
+        raise ValueError('Invalid statement type specified')
+    
+###################################################################################################################
+#                                             SECTION: utilities.py                                    #
+###################################################################################################################
+#################################################################################
+#
+#    Name :  set_etl_log_details()
+#    Purpose: this function is responsible for inserting log details related to an ETL jobs execution into a MySQL database.
+#    ----------------------------------------------------------------------------
+#
+#    Parameters :  Job_Meta_Details, MySQLConnection)
+#                 
+#    ----------------------------------------------------------------------------
+#
+#    Return Type : None
+#
+#################################################################################
+def set_etl_log_details(Job_Meta_Details, MySQLConnection):
+  
+    query_etl_log_details = (f"INSERT INTO {monitoring_db}.{operational} "
+                             "(batch_id, table_id, db_name, table_schema, table_name, layer, rows_ingested, job_start_time, job_end_time, job_duration, job_status, `exception`, remarks, src_extraction_type, raw_ingestion_type,job_name)"
+                             "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)")
+
+    data_etl_log_details = [Job_Meta_Details.BATCH_ID, Job_Meta_Details.TABLE_ID, Job_Meta_Details.DATABASE, Job_Meta_Details.SCHEMA_NAME, Job_Meta_Details.TABLE_NAME.lower(), Job_Meta_Details.LAYER, Job_Meta_Details.ROWS_INGESTED, Job_Meta_Details.JOB_START_TIME, Job_Meta_Details.JOB_END_TIME, Job_Meta_Details.JOB_EXECUTION_TIME, Job_Meta_Details.JOB_STATUS, Job_Meta_Details.EXCEPTION, Job_Meta_Details.REMARKS, Job_Meta_Details.SRC_EXTRACTION_TYPE, Job_Meta_Details.RAW_INGESTION_TYPE,Job_Meta_Details.JOB_NAME]
+    runMySQLQuery(MySQLConnection,query_etl_log_details, data_etl_log_details, statement_type='INSERT')
+
+
+
+###################################################################################################################
+#                                             SECTION: utilities.py                                    #
+###################################################################################################################
+#################################################################################
+#
+#    Name :  upsert_meta_info()
+#    Purpose:  SQL query to upsert operational metadata into a MySQL table. 
+#    ----------------------------------------------------------------------------
+#
+#    Parameters :  Job_Meta_Details, MySQLConnection
+#                 
+#    ----------------------------------------------------------------------------
+#
+#    Return Type : None
+#
+#################################################################################
+def upsert_meta_info(Job_Meta_Details, MySQLConnection):
+    #end_time.isoformat(' ')
+    Job_Meta_Details.JOB_END_TIME = datetime.now()  #removed ".replace(microsecond=0)" because it was causing troubles in job execution time calculation
+    #job_start_time = datetime.strptime(Job_Meta_Details.JOB_START_TIME, '%Y-%m-%d %H:%M:%S.%f'))
+    JOB_EXECUTION_TIME=str(Job_Meta_Details.JOB_END_TIME - Job_Meta_Details.JOB_START_TIME)
+    Job_Meta_Details.JOB_EXECUTION_TIME = JOB_EXECUTION_TIME
+    #formatted_start_time = Job_Meta_Details.JOB_START_TIME.isoformat(sep=' ')
+    set_etl_log_details(Job_Meta_Details, MySQLConnection)
+
+
+
+###################################################################################################################
+#                                             SECTION: utilities.py                                    #
+###################################################################################################################
+#################################################################################
+#
+#    Name :   record_exception()
+#    Purpose: this function will return record exception
+#    ----------------------------------------------------------------------------
+#
+#    Parameters :  sql connection, message, Job_Meta_Details
+#                 
+#    ----------------------------------------------------------------------------
+#
+#    Return Type : None
+#
+#################################################################################
+def record_exception(Job_Meta_Details, e, message,MySQLConnection):
+    Job_Meta_Details.JOB_STATUS = 'FAILURE'
+    Job_Meta_Details.REMARKS = message
+    e = re.sub(r'[^\x00-\x7F]+', ' ', str(e))
+    e = e.replace('`', '').replace("'", '').replace('"', '')
+    if len(str(e)) > 500:
+        Job_Meta_Details.EXCEPTION = str(e)[:1500]  #increased the range of captured exception
+    else:
+        Job_Meta_Details.EXCEPTION = str(e)
+    # conn= openMySQLConnection(env)
+    upsert_meta_info(Job_Meta_Details,MySQLConnection)
+    print(str(e))
+    exit(1)

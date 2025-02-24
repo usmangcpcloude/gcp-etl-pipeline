@@ -10,6 +10,9 @@ project_root = os.path.dirname(jobs_dir)
 sys.path.append(project_root)
 from configs.db_configs import *
 from commons.utilities import  *
+from commons.Job_Meta_Details import Job_Meta_Details
+from configs.env_variables import variables
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 5:
@@ -23,8 +26,19 @@ if __name__ == "__main__":
     batch_id = sys.argv[5]
     start_date = sys.argv[6] if len(sys.argv) > 6 else str(date.today() - timedelta(days=1))
     end_date = sys.argv[7] if len(sys.argv) > 7 else str(date.today())
+    sql_file_name = os.path.basename(sql_file)
+    # Remove the file extension to get the job name
+    job_name = os.path.splitext(sql_file_name)[0]
+    MySQLConnection = openMySQLConnection(env)
+    Job_Meta_Details = Job_Meta_Details(batch_id, '-1', None, None, table_name, "SEMANTIC", -1, datetime.now(), None, None, "FAILURE", None, None,None,None, job_name)
 
-    # Run the SQL file on BigQuery
-    sql_file_path = os.path.normpath(os.path.join(script_dir_format, use_case, sql_file))
-    project,mysql_etl_monitoring=env_configs(env)
-    bigquery_run(sql_file_path, env,project,batch_id)        
+    try:
+        sql_file_path = os.path.normpath(os.path.join(script_dir_format, use_case, sql_file))
+        project,mysql_etl_monitoring=env_configs(env)
+        bigquery_run(sql_file_path, env,project,batch_id)        
+        Job_Meta_Details.JOB_STATUS = "SUCCESS"
+        # Upsert (update or insert) job metadata information
+        upsert_meta_info(Job_Meta_Details, MySQLConnection)
+    except Exception as e:
+        print(e)
+        record_exception(Job_Meta_Details, e, "Failed during executing sql file.",MySQLConnection) 

@@ -11,6 +11,15 @@ from base64 import b64encode
 import json
 from pyspark.sql.functions import col
 from pyspark import StorageLevel
+script_dir = os.path.dirname(os.path.abspath(__file__))  
+script_dir_format=script_dir
+jobs_dir = os.path.dirname(script_dir)
+project_root = os.path.dirname(jobs_dir)
+sys.path.append(project_root)
+from configs.db_configs import *
+from commons.utilities import  *
+from configs.env_variables import variables
+
 
 
 class Job_Meta_Details:
@@ -124,6 +133,11 @@ if __name__ == "__main__":
     log4j = sc._jvm.org.apache.log4j
     logger = log4j.LogManager.getLogger(job_name.upper())
     logger.info("Successfully Initialized Spark Session!")
+    project,region,mysql_etl_monitoring=env_configs(env)
+    print("Trying to Open MYSQL connection",flush =True)
+    MySQLConnection=openMySQLConnection(mysql_etl_monitoring,project)
+    print("MySQLConnection connection successful", flush =True)
+
 
     RAW_BUCKET = "gs://dd_raw" + '/'
     CURATED_BUCKET=  "gs://dd_curated" + '/'
@@ -148,6 +162,7 @@ if __name__ == "__main__":
         input_df=load_parquet_file(spark,RAW_BUCKET+'gosales/go_products/*.parquet')
         tgt_df = load_parquet_file(spark,TARGET_PATH)
     except Exception as e:
+        record_exception(Job_Meta_Details, e, "Failed during Loading Data.",MySQLConnection)
         print("Error Occurred while loading data from raw layer")
         
 
@@ -161,6 +176,7 @@ if __name__ == "__main__":
         rows_ingested = transformed_df.count()
         job_meta_details.ROWS_INGESTED = rows_ingested
     except Exception as e:
+        record_exception(Job_Meta_Details, e, "Failed during Transforming Data.",MySQLConnection)
         print("Error Occurred While Transforming Data")
 
     ##############################################################################
@@ -174,6 +190,8 @@ if __name__ == "__main__":
         else:
             print("No More Data From Source")
         job_meta_details.JOB_STATUS = 'SUCCESS'
+        upsert_meta_info(Job_Meta_Details, MySQLConnection)
     except Exception as e:
+        record_exception(Job_Meta_Details, e, "Failed during Writing Data.",MySQLConnection)
         print("Error Occurred While Writing Data")
     print("Job Completed!")
