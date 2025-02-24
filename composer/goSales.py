@@ -33,33 +33,33 @@ CLUSTER_GENERATOR_CONFIG = ClusterGenerator(
 PYSPARK_JOB_1 = {
     "reference": {"project_id": 'kinetic-star-451310-s6'},
     "placement": {"cluster_name": 'small-cluster'},
-    "pyspark_job": {"main_python_file_uri": "gs://gcp-etl-pipeline/gcp-etl-pipeline/jobs/curated/helpings/method_hlp/dl_ct_gosales_method_hlp_01.py"}
+    "pyspark_job": {"main_python_file_uri": "gs://us-central1-poc-fc56a69e-bucket/jobs/curated/helpings/method_hlp/dl_ct_gosales_method_hlp_01.py"}
 }
 
 # PySpark job configuration
 PYSPARK_JOB_2 = {
     "reference": {"project_id": 'kinetic-star-451310-s6'},
     "placement": {"cluster_name": 'small-cluster'},
-    "pyspark_job": {"main_python_file_uri": "gs://gcp-etl-pipeline/gcp-etl-pipeline/jobs/curated/helpings/method_hlp/dl_ct_gosales_method_hlp_01.py"}
+    "pyspark_job": {"main_python_file_uri": "gs://us-central1-poc-fc56a69e-bucket/jobs/curated/helpings/method_hlp/dl_ct_gosales_method_hlp_01.py"}
 }
 
 
 PYSPARK_JOB_3 = {
     "reference": {"project_id": 'kinetic-star-451310-s6'},
     "placement": {"cluster_name": 'small-cluster'},
-    "pyspark_job": {"main_python_file_uri": "gs://gcp-etl-pipeline/gcp-etl-pipeline/jobs/curated/lookups/product_lkp/dl_ct_gosales_product_lkp_01.py"}
+    "pyspark_job": {"main_python_file_uri": "gs://us-central1-poc-fc56a69e-bucket/jobs/curated/lookups/product_lkp/dl_ct_gosales_product_lkp_01.py"}
 }
 
 PYSPARK_JOB_4 = {
     "reference": {"project_id": 'kinetic-star-451310-s6'},
     "placement": {"cluster_name": 'small-cluster'},
-    "pyspark_job": {"main_python_file_uri": "gs://gcp-etl-pipeline/gcp-etl-pipeline/jobs/curated/dimensions/retailer_dim/dl_ct_gosales_retailer_dim_01.py"}
+    "pyspark_job": {"main_python_file_uri": "gs://us-central1-poc-fc56a69e-bucket/jobs/curated/dimensions/retailer_dim/dl_ct_gosales_retailer_dim_01.py"}
 }
 
 PYSPARK_JOB_5 = {
     "reference": {"project_id": 'kinetic-star-451310-s6'},
     "placement": {"cluster_name": 'small-cluster'},
-    "pyspark_job": {"main_python_file_uri": "gs://gcp-etl-pipeline/gcp-etl-pipeline/jobs/curated/facts/sales_fact/dl_ct_gosales_sales_fact_01.py"}
+    "pyspark_job": {"main_python_file_uri": "gs://us-central1-poc-fc56a69e-bucket/jobs/curated/facts/sales_fact/dl_ct_gosales_sales_fact_01.py"}
 }
 
 
