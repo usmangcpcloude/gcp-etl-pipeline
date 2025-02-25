@@ -1,0 +1,29 @@
+name: Deploy to GCS
+
+on:
+  push:
+    branches:
+      - main  # or your desired branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+    - name: Setup Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ secrets.GCP_PROJECT }}
+
+    - name: Push Code to GCS
+      run: |
+        # Use rsync to sync repository content while excluding .git folder
+        gsutil -m rsync -r -x "^\.git.*" . gs://${{ secrets.GCS_BUCKET }}/
