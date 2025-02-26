@@ -18,6 +18,9 @@ from utilities import *
 from env_variables import variables
 from Job_Meta_Details import Job_Meta_Details
 
+REMOT_AIRFLOW_REPO = variables['remot_airflow_repo_path']
+service_account_json = os.path.join(REMOT_AIRFLOW_REPO, "commons/service-account-compute-addo.json")
+
 def init_spark_session(app_name):
     spark = SparkSession \
         .builder \
