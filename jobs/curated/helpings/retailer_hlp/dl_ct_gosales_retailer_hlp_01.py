@@ -54,7 +54,7 @@ def execute_transform(spark,input_df,tgt_df):
                             'I' AS oper,
                             999  as table_id    
                             from (select distinct retailer_code from retailer_input_tbl) src
-                            left join retailer_hlp_tbl tgt on lower(src.retailer_name)=lower(tgt.retailer_name)
+                            left join retailer_hlp_tbl tgt on lower(src.retailer_code)=lower(tgt.retailer_code)
                             CROSS JOIN
                             (   
                             SELECT coalesce (MAX (retailer_key),0) AS max_key
