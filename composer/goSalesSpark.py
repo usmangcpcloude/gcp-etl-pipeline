@@ -26,7 +26,11 @@ PYSPARK_JOB = {
 }
 
 default_args = {
-    "owner": "airflow",
+    'owner': 'airflow',
+    'depends_on_past': False,
+    'email_on_failure': False,
+    'email_on_retry': False,
+    'retries': 0,
     "start_date": days_ago(1),
 }
 
