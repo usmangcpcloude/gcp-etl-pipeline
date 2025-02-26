@@ -21,7 +21,7 @@ default_args = {
 
 # Define DAG
 dag = DAG(
-    'goSales',
+    'goSalesDag',
     default_args=default_args,
     description='Pipeline to extract GoSales data and load into BigQuery',
     schedule_interval=None,
