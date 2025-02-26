@@ -6,7 +6,7 @@ variables = {
     'ingestion' : 'ingestion_metadata',
     'operational' : 'operational_metadata',
     'catalog': 'catalog_metadata',
-    'runner':'DirectRunner',
+    'runner':'DataflowRunner',
     'temp_bucket':'gs://tempfiles-0001',
     'keyring':'default-keyring',
     'cryptokey':'default-key',
