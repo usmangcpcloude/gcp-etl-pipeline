@@ -13,7 +13,7 @@ BASE_DIR = "/home/airflow/gcs/dags/gcp-etl-pipeline/"
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
-    'email_on_failure': True,
+    'email_on_failure': False,
     'email_on_retry': False,
     'retries': 0,
     'start_date': datetime(2024, 2, 23),
@@ -45,7 +45,7 @@ go_methods = BashOperator(
     task_id='go_methods_raw',
     bash_command=f"""
         cd {BASE_DIR} && \
-        python jobs/raw/dl_rw_job.py gosales gosales go_methods dev "{{{{ ti.xcom_pull(task_ids='generate_batch_id', key='batch_id') }}}}"
+        python jobs/raw/dl_rw_job.py gosales gosales go_methods dev 999
     """,
     dag=dag
 )
