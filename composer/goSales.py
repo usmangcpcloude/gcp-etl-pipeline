@@ -7,18 +7,7 @@ import os
 import sys
 
 # Define base directories
-BASE_DIR = "/home/airflow/gcs/dags/gcp-etl-pipeline"
-MAIN_SCRIPT_DIRECTORY = f"{BASE_DIR}/jobs/"
-
-# Append paths for custom modules
-script_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(script_dir, '../'))
-sys.path.insert(1, f"{BASE_DIR}/configs/")
-sys.path.insert(2, f"{BASE_DIR}/commons/")
-
-# Import project-specific modules
-from configs.db_configs import *
-from commons.utilities import *
+BASE_DIR = "/home/airflow/gcs/dags/gcp-etl-pipeline/"
 
 # Default args for DAG
 default_args = {
@@ -47,18 +36,41 @@ def generate_batch_id(**kwargs):
     return batch_id
 
 create_batch_id = PythonOperator(
-    task_id='generate_batch_id',
+    task_id='start_batch',
     python_callable=generate_batch_id,
     provide_context=True,
     dag=dag
 )
 
-# Task 2: Run Pipeline with Dynamic Batch ID
-run_pipeline = BashOperator(
+go_methods = BashOperator(
     task_id='go_methods',
-    bash_command=f'python {MAIN_SCRIPT_DIRECTORY}raw/dl_rw_job.py gosales gosales go_methods dev "{{{{ ti.xcom_pull(task_ids="generate_batch_id", key="batch_id") }}}}"',
+    bash_command=f"""
+        cd {BASE_DIR} && \
+        python jobs/raw/dl_rw_job.py gosales gosales go_methods dev "{{{{ ti.xcom_pull(task_ids='generate_batch_id', key='batch_id') }}}}"
+    """,
     dag=dag
 )
 
 # Define task dependencies
-create_batch_id >> run_pipeline
+create_batch_id >> go_methods
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
