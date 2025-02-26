@@ -27,6 +27,81 @@ runner = variables['runner']
 temp_location = variables['temp_bucket']
 setup_file_path = "jobs/raw/setup.py"
 
+project = variables['project']
+keyring = variables['keyring']
+cryptokey = variables['cryptokey']
+
+KMS_KEY_PATH = f"projects/{project}/locations/global/keyRings/{keyring}/cryptoKeys/{cryptokey}"
+
+
+def encrypt_with_kms(plaintext: str) -> str:
+    """Encrypts a given string using Google Cloud KMS."""
+    client = kms.KeyManagementServiceClient()
+    encrypted_response = client.encrypt(request={"name": KMS_KEY_PATH, "plaintext": plaintext.encode()})
+    return base64.b64encode(encrypted_response.ciphertext).decode()
+
+def dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_name,project,data_types,column_names,encypt_column):
+    host, username, password, database,ssl=get_credentials(db_secret_name,project)
+    
+    parquet_schema = pyarrow.schema([
+    (name,
+        pyarrow.int32() if col_type in ['tinyint', 'smallint', 'mediumint', 'int', 'year'] else
+        pyarrow.int64() if col_type == 'bigint' else
+        pyarrow.float32() if col_type == 'float' else
+        pyarrow.float64() if col_type in ['double', 'decimal', 'numeric'] else
+        pyarrow.string() if col_type in ['char', 'varchar', 'text', 'tinytext', 'mediumtext', 'longtext'] else
+        pyarrow.string() if col_type in ['date', 'datetime', 'timestamp', 'time'] else
+        pyarrow.binary() if col_type in ['binary', 'varbinary', 'blob', 'tinyblob', 'mediumblob', 'longblob'] else
+        pyarrow.int32() if col_type == 'bit' else
+        pyarrow.string()  # Default fallback to string
+        )
+        for name, col_type in data_types.items()
+                    ])
+    
+    sql_query = f"""
+                    SELECT 
+                        {', '.join(
+                            f"CAST({name} AS CHAR) AS {name}" if data_types[name] in ['date', 'timestamp'] else name
+                            for name in column_names
+                        )}
+                    FROM {database}.{table_name}
+                    """
+    def row_to_dict(row):
+        return {name: convert_type(row[i], data_types[name]) for i, name in enumerate(column_names)}
+    
+    def row_to_dict_encrypted(row):
+        """Converts row to dict and encrypts selected columns."""
+        encrypted_columns = []  # Define columns to encrypt
+        return {
+            name: encrypt_with_kms(str(row[i])) if name in encrypted_columns else row[i]
+            for i, name in enumerate(column_names)
+        }
+
+
+    with beam.Pipeline(options=pipeline_options) as pipeline:
+        mysql_data = (
+            pipeline 
+            | 'Read from MySQL' >> ReadFromJdbc(
+                driver_class_name='com.mysql.cj.jdbc.Driver',
+                jdbc_url="jdbc:mysql://"+host+":3306/"+database,
+                username=username,
+                password=password,
+                query=sql_query,
+                table_name=database+'.'+table_name
+            )
+            | 'Convert Row to Dict' >> beam.Map(row_to_dict_encrypted)
+            | 'Strip Whitespace' >> beam.Map(lambda row: {k: v.strip() if isinstance(v, str) else v for k, v in row.items()})  # Strip \r and spaces
+        )
+        
+        # Write data to Parquet format in GCS
+        mysql_data | 'Write to Parquet' >> WriteToParquet(
+            file_path_prefix=env_raw_bucket+'/'+database+'/'+table_name +'/'+ table_name,
+            schema=parquet_schema,
+            file_name_suffix='.parquet'
+        )
+
+
+
 
 if __name__ == "__main__":
     """
@@ -108,7 +183,7 @@ if __name__ == "__main__":
 
         # GETTING COLUMN NAMES,MERGE COLUMNS, DATA TYPE , SQL QUERY AND HEADER
 
-        column_names, merge_column, data_types,sql_query,header = parse_table_defination(table_definations,table_name)
+        column_names, merge_column, data_types,sql_query,header,encypt_column = parse_table_defination(table_definations,table_name)
 
     except Exception as e:
         print("Exception occurred during ingestion parameter retrieval")
@@ -130,7 +205,7 @@ if __name__ == "__main__":
         record_exception(Job_Meta_Details, e, "Failed during Setting DataFlow Pipeline Options.",MySQLConnection)
     try:
         print("Running Data Flow Pipeline", flush=True)
-        dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_name,project,data_types,column_names)
+        dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_name,project,data_types,column_names,encypt_column)
         Job_Meta_Details.JOB_STATUS = "SUCCESS"
             # Upsert (update or insert) job metadata information
         upsert_meta_info(Job_Meta_Details, MySQLConnection)

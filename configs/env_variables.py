@@ -7,5 +7,9 @@ variables = {
     'operational' : 'operational_metadata',
     'catalog': 'catalog_metadata',
     'runner':'DataflowRunner',
-    'temp_bucket':'gs://tempfiles-0001'
+    'temp_bucket':'gs://tempfiles-0001',
+    'keyring':'default-keyring',
+    'cryptokey':'default-key',
+    'project':'kinetic-star-451310-s6'
+
     }
