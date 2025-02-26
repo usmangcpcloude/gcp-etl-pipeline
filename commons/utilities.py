@@ -27,13 +27,13 @@ sys.path.append(project_root)
 try:
     from configs.db_configs import *
     from commons.utilities import *
-    from commons.Job_Meta_Details import Job_Meta_Details
+    #from commons.Job_Meta_Details import Job_Meta_Details
     from configs.env_variables import variables
 except ModuleNotFoundError:
     from db_configs import *
     from utilities import *
     from env_variables import variables
-    from Job_Meta_Details import Job_Meta_Details
+    #from Job_Meta_Details import Job_Meta_Details
 
 
 KMS_KEY_PATH = "projects/kinetic-star-451310-s6/locations/global/keyRings/default-keyring/cryptoKeys/default-key"
