@@ -21,11 +21,13 @@ from commons.utilities import  *
 from commons.Job_Meta_Details import Job_Meta_Details
 from configs.env_variables import variables
 
-service_account_json = "commons/service-account-compute-addo.json"
+#service_account_json = "C:/Users/MuhammadSheharyarJav/gcp-etl-pipeline/commons/service-account-compute-addo.json"
+service_account_json="/home/airflow/gcs/dags/gcp-etl-pipeline/commons/service-account-compute-addo.json"
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = service_account_json
 runner = variables['runner']
 temp_location = variables['temp_bucket']
-setup_file_path = "jobs/raw/setup.py"
+setup_file_path = "/home/airflow/gcs/dags/gcp-etl-pipeline/jobs/raw/setup.py"
+#setup_file_path = "C:/Users/MuhammadSheharyarJav/gcp-etl-pipeline/jobs/raw/setup.py"
 
 
 if __name__ == "__main__":
@@ -55,6 +57,9 @@ if __name__ == "__main__":
 
         # Open a MySQL database connection
         project,region,mysql_etl_monitoring=env_configs(env)
+        print("project",project)
+        print("mysql:", mysql_etl_monitoring)
+        print("region:",region)
         print("Trying to Open MYSQL connection",flush =True)
         MySQLConnection=openMySQLConnection(mysql_etl_monitoring,project)
         print("MySQLConnection connection successful", flush =True)
@@ -105,6 +110,9 @@ if __name__ == "__main__":
         db_secret_name=env_results[0]
         env_staging_bucket=env_results[1]
         env_raw_bucket=env_results[2]  
+        print(env_staging_bucket)
+        print(env_raw_bucket)
+        print(temp_location)
 
         # GETTING COLUMN NAMES,MERGE COLUMNS, DATA TYPE , SQL QUERY AND HEADER
 
