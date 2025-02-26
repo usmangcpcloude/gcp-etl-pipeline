@@ -11,35 +11,10 @@ from base64 import b64encode
 import json
 from pyspark.sql.functions import col
 from pyspark import StorageLevel
-script_dir = os.path.dirname(os.path.abspath(__file__))  
-script_dir_format=script_dir
-jobs_dir = os.path.dirname(script_dir)
-project_root = os.path.dirname(jobs_dir)
-sys.path.append(project_root)
-from configs.db_configs import *
-from commons.utilities import  *
-from configs.env_variables import variables
-
-
-
-class Job_Meta_Details:
-    def __init__(self, batch_id, table_id, db_name, schema_name, tbl_name, layer, rows_ingested, job_start_time, job_end_time, job_execution_time, job_status, exception, remarks, src_extraction_type, raw_ingestion_type, job_name):
-        self.BATCH_ID = batch_id
-        self.TABLE_ID = table_id
-        self.DATABASE = db_name
-        self.SCHEMA_NAME = schema_name
-        self.TABLE_NAME = tbl_name
-        self.LAYER = layer
-        self.ROWS_INGESTED = rows_ingested
-        self.JOB_START_TIME = job_start_time
-        self.JOB_END_TIME = job_end_time
-        self.JOB_EXECUTION_TIME = job_execution_time
-        self.JOB_STATUS = job_status
-        self.EXCEPTION = exception
-        self.REMARKS = remarks
-        self.SRC_EXTRACTION_TYPE = src_extraction_type
-        self.RAW_INGESTION_TYPE = raw_ingestion_type
-        self.JOB_NAME = job_name
+from db_configs import *
+from utilities import *
+from env_variables import variables
+from Job_Meta_Details import Job_Meta_Details
 
 def init_spark_session(app_name):
     spark = SparkSession \
@@ -155,7 +130,7 @@ if __name__ == "__main__":
         input_df_hlp=load_parquet_file(spark,CURATED_BUCKET+'helpings/retailer_hlp')
         tgt_df = load_parquet_file(spark,TARGET_PATH)
     except Exception as e:
-        record_exception(Job_Meta_Details, e, "Failed during Loading Data.",MySQLConnection)
+        record_exception(job_meta_details, e, "Failed during Loading Data.",MySQLConnection)
         print("Error Occurred while loading data from raw layer")
         
 
@@ -169,7 +144,7 @@ if __name__ == "__main__":
         rows_ingested = transformed_df.count()
         job_meta_details.ROWS_INGESTED = rows_ingested
     except Exception as e:
-        record_exception(Job_Meta_Details, e, "Failed during Loading Data.",MySQLConnection)
+        record_exception(job_meta_details, e, "Failed during Loading Data.",MySQLConnection)
         print("Error Occurred While Transforming Data")
 
     ##############################################################################
@@ -183,8 +158,8 @@ if __name__ == "__main__":
         else:
             print("No More Data From Source")
         job_meta_details.JOB_STATUS = 'SUCCESS'
-        upsert_meta_info(Job_Meta_Details, MySQLConnection)
+        upsert_meta_info(job_meta_details, MySQLConnection)
     except Exception as e:
-        record_exception(Job_Meta_Details, e, "Failed during Writing Data.",MySQLConnection)
+        record_exception(job_meta_details, e, "Failed during Writing Data.",MySQLConnection)
         print("Error Occurred While Writing Data")
     print("Job Completed!")
