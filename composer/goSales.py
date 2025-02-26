@@ -43,7 +43,7 @@ create_batch_id = PythonOperator(
 )
 
 go_methods = BashOperator(
-    task_id='go_methods',
+    task_id='go_methods_raw',
     bash_command=f"""
         cd {BASE_DIR} && \
         python jobs/raw/dl_rw_job.py gosales gosales go_methods dev "{{{{ ti.xcom_pull(task_ids='generate_batch_id', key='batch_id') }}}}"
@@ -51,8 +51,34 @@ go_methods = BashOperator(
     dag=dag
 )
 
+go_products = BashOperator(
+    task_id='go_products_raw',
+    bash_command=f"""
+        cd {BASE_DIR} && \
+        python jobs/raw/dl_rw_job.py gosales gosales go_products dev "{{{{ ti.xcom_pull(task_ids='generate_batch_id', key='batch_id') }}}}"
+    """,
+    dag=dag
+)
+
+go_retailers = BashOperator(
+    task_id='go_retailers_raw',
+    bash_command=f"""
+        cd {BASE_DIR} && \
+        python jobs/raw/dl_rw_job.py gosales gosales go_retailers dev "{{{{ ti.xcom_pull(task_ids='generate_batch_id', key='batch_id') }}}}"
+    """,
+    dag=dag
+)
+
+go_daily_sales = BashOperator(
+    task_id='go_daily_sales_raw',
+    bash_command=f"""
+        cd {BASE_DIR} && \
+        python jobs/raw/dl_rw_job.py gosales gosales go_daily_sales dev "{{{{ ti.xcom_pull(task_ids='generate_batch_id', key='batch_id') }}}}"
+    """,
+    dag=dag
+)
 # Define task dependencies
-create_batch_id >> go_methods
+create_batch_id >> go_methods >> go_products >> go_retailers >> go_daily_sales
 
 
 
