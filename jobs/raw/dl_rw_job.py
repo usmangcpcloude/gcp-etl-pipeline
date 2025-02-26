@@ -22,12 +22,6 @@ from commons.Job_Meta_Details import Job_Meta_Details
 from configs.env_variables import variables
 
 
-# try:
-#     BASE_DIR = "/home/airflow/gcs/dags/gcp-etl-pipeline"
-#     service_account_json = os.path.join(BASE_DIR, "commons/service-account-compute-addo.json")
-#     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = service_account_json
-#     setup_file_path = "/home/airflow/gcs/dags/gcp-etl-pipeline/jobs/raw/setup.py"
-# except ModuleNotFoundError:
 service_account_json = "commons/service-account-compute-addo.json"
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = service_account_json
 setup_file_path = "jobs/raw/setup.py"
@@ -44,13 +38,7 @@ cryptokey = variables['cryptokey']
 KMS_KEY_PATH = f"projects/{project}/locations/global/keyRings/{keyring}/cryptoKeys/{cryptokey}"
 
 
-def encrypt_with_kms(plaintext: str) -> str:
-    """Encrypts a given string using Google Cloud KMS."""
-    client = kms.KeyManagementServiceClient()
-    encrypted_response = client.encrypt(request={"name": KMS_KEY_PATH, "plaintext": plaintext.encode()})
-    return base64.b64encode(encrypted_response.ciphertext).decode()
-
-def dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_name,project,data_types,column_names,encypt_column):
+def dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_name,project,data_types,column_names,encypt_column,KMS_KEY_PATH):
     host, username, password, database,ssl=get_credentials(db_secret_name,project)
     
     parquet_schema = pyarrow.schema([
@@ -79,6 +67,13 @@ def dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_n
     def row_to_dict(row):
         return {name: convert_type(row[i], data_types[name]) for i, name in enumerate(column_names)}
     
+    def encrypt_with_kms(plaintext: str) -> str:
+        """Encrypts a given string using Google Cloud KMS."""
+        client = kms.KeyManagementServiceClient()
+        encrypted_response = client.encrypt(request={"name": KMS_KEY_PATH, "plaintext": plaintext.encode()})
+        return base64.b64encode(encrypted_response.ciphertext).decode()
+
+
     def row_to_dict_encrypted(row):
         """Converts row to dict and encrypts selected columns."""
         encrypted_columns = encypt_column  # Define columns to encrypt
@@ -194,6 +189,8 @@ if __name__ == "__main__":
         # GETTING COLUMN NAMES,MERGE COLUMNS, DATA TYPE , SQL QUERY AND HEADER
 
         column_names, merge_column, data_types,sql_query,header,encypt_column = parse_table_defination(table_definations,table_name)
+        print(encypt_column)
+        #exit(0)
 
     except Exception as e:
         print("Exception occurred during ingestion parameter retrieval")
@@ -215,7 +212,7 @@ if __name__ == "__main__":
         record_exception(job_meta_details, e, "Failed during Setting DataFlow Pipeline Options.",MySQLConnection)
     try:
         print("Running Data Flow Pipeline", flush=True)
-        dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_name,project,data_types,column_names,encypt_column)
+        dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_name,project,data_types,column_names,encypt_column,KMS_KEY_PATH)
         job_meta_details.JOB_STATUS = "SUCCESS"
             # Upsert (update or insert) job metadata information
         print("Write Data Successfully")
