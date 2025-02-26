@@ -8,7 +8,7 @@ import sys
 
 # Define base directories
 BASE_DIR = "/home/airflow/gcs/dags/gcp-etl-pipeline"
-MAIN_SCRIPT_DIRECTORY = f"{BASE_DIR}/Jobs/"
+MAIN_SCRIPT_DIRECTORY = f"{BASE_DIR}/jobs/"
 
 # Append paths for custom modules
 script_dir = os.path.dirname(os.path.abspath(__file__))
