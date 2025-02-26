@@ -285,7 +285,7 @@ def dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_n
     
     def row_to_dict_encrypted(row):
         """Converts row to dict and encrypts selected columns."""
-        encrypted_columns = ["product_brand"]  # Define columns to encrypt
+        encrypted_columns = []  # Define columns to encrypt
         return {
             name: encrypt_with_kms(str(row[i])) if name in encrypted_columns else row[i]
             for i, name in enumerate(column_names)
