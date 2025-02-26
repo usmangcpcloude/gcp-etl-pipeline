@@ -142,7 +142,7 @@ if __name__ == "__main__":
         input_df=load_parquet_file(spark,RAW_BUCKET+'gosales/go_products/*.parquet')
         tgt_df = load_parquet_file(spark,TARGET_PATH)
     except Exception as e:
-        record_exception(Job_Meta_Details, e, "Failed during Loading Data.",MySQLConnection)
+        record_exception(job_meta_details, e, "Failed during Loading Data.",MySQLConnection)
         print("Error Occurred while loading data from raw layer")
         
 
@@ -156,7 +156,7 @@ if __name__ == "__main__":
         rows_ingested = transformed_df.count()
         job_meta_details.ROWS_INGESTED = rows_ingested
     except Exception as e:
-        record_exception(Job_Meta_Details, e, "Failed during Transforming Data.",MySQLConnection)
+        record_exception(job_meta_details, e, "Failed during Transforming Data.",MySQLConnection)
         print("Error Occurred While Transforming Data")
 
     ##############################################################################
@@ -170,8 +170,8 @@ if __name__ == "__main__":
         else:
             print("No More Data From Source")
         job_meta_details.JOB_STATUS = 'SUCCESS'
-        upsert_meta_info(Job_Meta_Details, MySQLConnection)
+        upsert_meta_info(job_meta_details, MySQLConnection)
     except Exception as e:
-        record_exception(Job_Meta_Details, e, "Failed during Writing Data.",MySQLConnection)
+        record_exception(job_meta_details, e, "Failed during Writing Data.",MySQLConnection)
         print("Error Occurred While Writing Data")
     print("Job Completed!")
