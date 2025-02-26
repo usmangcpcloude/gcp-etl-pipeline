@@ -53,8 +53,8 @@ with DAG(
     schedule_interval=None,  # Trigger manually or set cron expression
     catchup=False,
 ) as dag:
-    
-    tasks = []
+        
+    previous_task = None
     for task_name, pyspark_job_uri in PYSPARK_JOBS:
         task = DataprocSubmitJobOperator(
             task_id=task_name,
@@ -62,6 +62,7 @@ with DAG(
             region=REGION,
             project_id=PROJECT_ID
         )
-        tasks.append(task)
-    
-    tasks
+
+        if previous_task:
+            previous_task >> task  # Ensuring sequential execution
+        previous_task = task
