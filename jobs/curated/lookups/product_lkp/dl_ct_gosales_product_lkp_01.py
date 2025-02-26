@@ -11,35 +11,12 @@ from base64 import b64encode
 import json
 from pyspark.sql.functions import col
 from pyspark import StorageLevel
-script_dir = os.path.dirname(os.path.abspath(__file__))  
-script_dir_format=script_dir
-jobs_dir = os.path.dirname(script_dir)
-project_root = os.path.dirname(jobs_dir)
-sys.path.append(project_root)
-from configs.db_configs import *
-from commons.utilities import  *
-from configs.env_variables import variables
-
-
-
-class Job_Meta_Details:
-    def __init__(self, batch_id, table_id, db_name, schema_name, tbl_name, layer, rows_ingested, job_start_time, job_end_time, job_execution_time, job_status, exception, remarks, src_extraction_type, raw_ingestion_type, job_name):
-        self.BATCH_ID = batch_id
-        self.TABLE_ID = table_id
-        self.DATABASE = db_name
-        self.SCHEMA_NAME = schema_name
-        self.TABLE_NAME = tbl_name
-        self.LAYER = layer
-        self.ROWS_INGESTED = rows_ingested
-        self.JOB_START_TIME = job_start_time
-        self.JOB_END_TIME = job_end_time
-        self.JOB_EXECUTION_TIME = job_execution_time
-        self.JOB_STATUS = job_status
-        self.EXCEPTION = exception
-        self.REMARKS = remarks
-        self.SRC_EXTRACTION_TYPE = src_extraction_type
-        self.RAW_INGESTION_TYPE = raw_ingestion_type
-        self.JOB_NAME = job_name
+import os
+print(os.listdir())  # Check if the files are actually present in the working directory
+from db_configs import *
+from utilities import *
+from env_variables import variables
+from Job_Meta_Details import Job_Meta_Details
 
 def init_spark_session(app_name):
     spark = SparkSession \
@@ -67,6 +44,10 @@ def add_meta_info(input_df, batch_id):
 # Updates a job metadata dictionary with the end time of the job and the duration of the job execution time, and inserts this information into a MySQL table.
 
 
+
+def execute_transform(spark,input_df,tgt_df):    
+    product_input = input_df.createOrReplaceTempView('product_input_tbl')
+    product_lkp = tgt_df.createOrReplaceTempView('product_lkp_tbl')
 
 def execute_transform(spark,input_df,tgt_df):    
     product_input = input_df.createOrReplaceTempView('product_input_tbl')
@@ -125,8 +106,7 @@ if __name__ == "__main__":
     usecase="lookups"
     env = "dev"
     batch_id = "999"
-
-    job_meta_details = Job_Meta_Details(batch_id, -1, None, "dd_curated", tabl_name, "curated", -1, None, None, None, None, None, None,None,None,None)                
+    job_meta_details = Job_Meta_Details(batch_id, -1, None, "dd_curated", tabl_name, "curated", -1, None, None, None, None, None, None,None,None,None)
     spark = init_spark_session(job_name)
     spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
     sc = spark.sparkContext
