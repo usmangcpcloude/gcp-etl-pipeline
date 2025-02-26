@@ -55,9 +55,8 @@ create_batch_id = PythonOperator(
 
 # Task 2: Run Pipeline with Dynamic Batch ID
 run_pipeline = BashOperator(
-    task_id='run_pipeline',
-    bash_command='echo hello world',
-    #bash_command=f'python {MAIN_SCRIPT_DIRECTORY}raw/dl_rw_job.py gosales gosales go_methods dev "{{{{ ti.xcom_pull(task_ids="generate_batch_id", key="batch_id") }}}}"',
+    task_id='go_methods',
+    bash_command=f'python {MAIN_SCRIPT_DIRECTORY}raw/dl_rw_job.py gosales gosales go_methods dev "{{{{ ti.xcom_pull(task_ids="generate_batch_id", key="batch_id") }}}}"',
     dag=dag
 )
 
