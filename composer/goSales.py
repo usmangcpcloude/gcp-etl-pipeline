@@ -15,8 +15,7 @@ default_args = {
     'depends_on_past': False,
     'email_on_failure': True,
     'email_on_retry': False,
-    'retries': 1,
-    'retry_delay': timedelta(minutes=5),
+    'retries': 0,
     'start_date': datetime(2024, 2, 23),
 }
 
