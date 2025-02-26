@@ -16,6 +16,8 @@ import logging
 import argparse
 import pyarrow
 import re
+from google.cloud import kms
+import base64
 
 script_dir = os.path.dirname(os.path.abspath(__file__))  
 script_dir_format=script_dir
@@ -24,7 +26,7 @@ project_root = os.path.dirname(jobs_dir)
 sys.path.append(project_root)
 from configs.db_configs import *
 from configs.env_variables import variables
-
+KMS_KEY_PATH = "projects/kinetic-star-451310-s6/locations/global/keyRings/default-keyring/cryptoKeys/default-key"
 
 
 monitoring_db = variables['monitoring_db']
@@ -236,7 +238,19 @@ def convert_type(value, col_type):
         print(f"Error converting value {value} of type {col_type}: {e}")
         return None  # Handle conversion errors safely
 
+def encrypt_with_kms(plaintext: str) -> str:
+    """Encrypts a given string using Google Cloud KMS."""
+    client = kms.KeyManagementServiceClient()
+    encrypted_response = client.encrypt(request={"name": KMS_KEY_PATH, "plaintext": plaintext.encode()})
+    return base64.b64encode(encrypted_response.ciphertext).decode()
 
+def row_to_dict_encrypted(row):
+    """Converts row to dict and encrypts selected columns."""
+    encrypted_columns = ["sensitive_column1", "sensitive_column2"]  # Define columns to encrypt
+    return {
+        name: encrypt_with_kms(str(row[i])) if name in encrypted_columns else row[i]
+        for i, name in enumerate(column_names)
+    }
 
 def dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_name,project,data_types,column_names):
     host, username, password, database,ssl=get_credentials(db_secret_name,project)
@@ -266,6 +280,15 @@ def dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_n
                     """
     def row_to_dict(row):
         return {name: convert_type(row[i], data_types[name]) for i, name in enumerate(column_names)}
+    
+    def row_to_dict_encrypted(row):
+        """Converts row to dict and encrypts selected columns."""
+        encrypted_columns = ["retailer_name"]  # Define columns to encrypt
+        return {
+            name: encrypt_with_kms(str(row[i])) if name in encrypted_columns else row[i]
+            for i, name in enumerate(column_names)
+        }
+
 
     with beam.Pipeline(options=pipeline_options) as pipeline:
         mysql_data = (
@@ -278,7 +301,7 @@ def dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_n
                 query=sql_query,
                 table_name=database+'.'+table_name
             )
-            | 'Convert Row to Dict' >> beam.Map(row_to_dict)
+            | 'Convert Row to Dict' >> beam.Map(row_to_dict_encrypted)
             | 'Strip Whitespace' >> beam.Map(lambda row: {k: v.strip() if isinstance(v, str) else v for k, v in row.items()})  # Strip \r and spaces
         )
         
