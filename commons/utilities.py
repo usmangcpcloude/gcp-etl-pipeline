@@ -24,6 +24,7 @@ script_dir_format=script_dir
 jobs_dir = os.path.dirname(script_dir)
 project_root = os.path.dirname(jobs_dir)
 sys.path.append(project_root)
+
 try:
     from configs.db_configs import *
     from commons.utilities import *
@@ -35,10 +36,6 @@ except ModuleNotFoundError:
     from env_variables import variables
     #from Job_Meta_Details import Job_Meta_Details
 
-
-KMS_KEY_PATH = "projects/kinetic-star-451310-s6/locations/global/keyRings/default-keyring/cryptoKeys/default-key"
-
-
 monitoring_db = variables['monitoring_db']
 batch = variables['batch']
 pipeline = variables['pipeline']
@@ -46,6 +43,13 @@ task_meta = variables['task']
 ingestion = variables['ingestion']
 operational = variables['operational']
 catalog = variables['catalog']
+project = variables['project']
+keyring = variables['keyring']
+cryptokey = variables['cryptokey']
+
+KMS_KEY_PATH = f"projects/{project}/locations/global/keyRings/{keyring}/cryptoKeys/{cryptokey}"
+
+
 
 def bigquery_run(sql_file_path, env,project,batch_id):
     """Executes a SQL file on BigQuery"""
@@ -176,9 +180,10 @@ def parse_table_defination(table_definations,table_name):
         column_names = table_info['Column_names']
         sql_query = f"SELECT\n    " + ",\n    ".join([f"{col}::text AS {col}" for col in column_names]) + f"\nFROM {table_name};"
         merge_column = table_info['merge_column']
+        encypt_column=table_info['masking_column']
         data_types = table_info['data_types']
         header = ",".join(column_names)
-        return column_names, merge_column, data_types,sql_query,header
+        return column_names, merge_column, data_types,sql_query,header,encypt_column
     except Exception as e:
         return f"Error generating query: {str(e)}"
     
@@ -254,7 +259,7 @@ def encrypt_with_kms(plaintext: str) -> str:
     encrypted_response = client.encrypt(request={"name": KMS_KEY_PATH, "plaintext": plaintext.encode()})
     return base64.b64encode(encrypted_response.ciphertext).decode()
 
-def dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_name,project,data_types,column_names):
+def dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_name,project,data_types,column_names,encypt_column):
     host, username, password, database,ssl=get_credentials(db_secret_name,project)
     
     parquet_schema = pyarrow.schema([
