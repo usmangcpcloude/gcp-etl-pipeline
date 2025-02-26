@@ -31,7 +31,7 @@ dag = DAG(
 
 # Task 1: Generate Batch ID
 def generate_batch_id(**kwargs):
-    batch_id = 999  # Static for now; can be dynamic
+    batch_id = '999'  # Static for now; can be dynamic
     kwargs['ti'].xcom_push(key='batch_id', value=batch_id)
     return batch_id
 

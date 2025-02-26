@@ -151,11 +151,11 @@ if __name__ == "__main__":
         env = env.lower()
         # Create a Job_Meta_Details object to store metadata
         print("Creating Job_Meta_Details", flush =True)
-        Job_Meta_Details = Job_Meta_Details(batch_id, '-1', db_name, None, table_name, "RAW", -1, datetime.now(), None, None, "Failure", None, None,None,None,'dl_rw_job')
+        job_meta_details = Job_Meta_Details(batch_id, '-1', db_name, None, table_name, "RAW", -1, datetime.now(), None, None, "Failure", None, None,None,None,'dl_rw_job')
         print("Job_Meta_Details created", flush =True)
     except Exception as e:
         print("Usage: python script.py <mysql_source_system> <db_name> <table_schema> <table_name> <env> <batch_id>")  
-        record_exception(Job_Meta_Details, e, "Failed during Getting Arguements From User.",MySQLConnection)
+        record_exception(job_meta_details, e, "Failed during Getting Arguements From User.",MySQLConnection)
     try: 
         # print ("Getting Ingestion_metadata arguments")
         print("Getting Ingestion_metadata arguments", flush=True)
@@ -179,9 +179,9 @@ if __name__ == "__main__":
         print("Retrieved ingestion parameters successfully", flush=True)
 
         #updating job meta details with specific variables to be updated in operational metadata table
-        Job_Meta_Details.SRC_EXTRACTION_TYPE=src_extraction_type
-        Job_Meta_Details.RAW_INGESTION_TYPE=raw_ingestion_type  
-        Job_Meta_Details.TABLE_ID=table_id  
+        job_meta_details.SRC_EXTRACTION_TYPE=src_extraction_type
+        job_meta_details.RAW_INGESTION_TYPE=raw_ingestion_type  
+        job_meta_details.TABLE_ID=table_id  
 
         env_results = add_env_prefix(env, secret_name, staging_bucket, raw_bucket)
 
@@ -197,7 +197,7 @@ if __name__ == "__main__":
 
     except Exception as e:
         print("Exception occurred during ingestion parameter retrieval")
-        record_exception(Job_Meta_Details, e, "Failed during data selectIngestionParams.",MySQLConnection)
+        record_exception(job_meta_details, e, "Failed during data selectIngestionParams.",MySQLConnection)
 
     try:
         print("Define pipeline options", flush=True)
@@ -212,16 +212,17 @@ if __name__ == "__main__":
                                 )
     except Exception as e:
         print("Exception occurred during defining pipeline options")
-        record_exception(Job_Meta_Details, e, "Failed during Setting DataFlow Pipeline Options.",MySQLConnection)
+        record_exception(job_meta_details, e, "Failed during Setting DataFlow Pipeline Options.",MySQLConnection)
     try:
         print("Running Data Flow Pipeline", flush=True)
         dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_name,project,data_types,column_names,encypt_column)
-        Job_Meta_Details.JOB_STATUS = "SUCCESS"
+        job_meta_details.JOB_STATUS = "SUCCESS"
             # Upsert (update or insert) job metadata information
-        upsert_meta_info(Job_Meta_Details, MySQLConnection)
+        print("Write Data Successfully")
+        upsert_meta_info(job_meta_details, MySQLConnection)
     except Exception as e:
         print("Exception occurred during Running Dataflow Pipeline")
-        record_exception(Job_Meta_Details, e, "Failed during Ingestion Data Using Dataflow.",MySQLConnection)
+        record_exception(job_meta_details, e, "Failed during Ingestion Data Using Dataflow.",MySQLConnection)
 
 
 
