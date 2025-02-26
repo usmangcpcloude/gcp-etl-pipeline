@@ -26,16 +26,18 @@ try:
     BASE_DIR = "/home/airflow/gcs/dags/gcp-etl-pipeline"
     service_account_json = os.path.join(BASE_DIR, "commons/service-account-compute-addo.json")
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = service_account_json
+    setup_file_path = "/home/airflow/gcs/dags/gcp-etl-pipeline/jobs/raw/setup.py"
 except ModuleNotFoundError:
     service_account_json = "commons/service-account-compute-addo.json"
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = service_account_json
+    setup_file_path = "jobs/raw/setup.py"
 
 
 
 
 runner = variables['runner']
 temp_location = variables['temp_bucket']
-setup_file_path = "jobs/raw/setup.py"
+#setup_file_path = "jobs/raw/setup.py"
 
 project = variables['project']
 keyring = variables['keyring']
