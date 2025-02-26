@@ -24,8 +24,18 @@ script_dir_format=script_dir
 jobs_dir = os.path.dirname(script_dir)
 project_root = os.path.dirname(jobs_dir)
 sys.path.append(project_root)
-from configs.db_configs import *
-from configs.env_variables import variables
+try:
+    from configs.db_configs import *
+    from commons.utilities import *
+    from commons.Job_Meta_Details import Job_Meta_Details
+    from configs.env_variables import variables
+except ModuleNotFoundError:
+    from db_configs import *
+    from utilities import *
+    from env_variables import variables
+    from Job_Meta_Details import Job_Meta_Details
+
+
 KMS_KEY_PATH = "projects/kinetic-star-451310-s6/locations/global/keyRings/default-keyring/cryptoKeys/default-key"
 
 
@@ -244,14 +254,6 @@ def encrypt_with_kms(plaintext: str) -> str:
     encrypted_response = client.encrypt(request={"name": KMS_KEY_PATH, "plaintext": plaintext.encode()})
     return base64.b64encode(encrypted_response.ciphertext).decode()
 
-def row_to_dict_encrypted(row):
-    """Converts row to dict and encrypts selected columns."""
-    encrypted_columns = ["sensitive_column1", "sensitive_column2"]  # Define columns to encrypt
-    return {
-        name: encrypt_with_kms(str(row[i])) if name in encrypted_columns else row[i]
-        for i, name in enumerate(column_names)
-    }
-
 def dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_name,project,data_types,column_names):
     host, username, password, database,ssl=get_credentials(db_secret_name,project)
     
@@ -283,7 +285,7 @@ def dataflow_pipeline_run(pipeline_options,table_name,env_raw_bucket,db_secret_n
     
     def row_to_dict_encrypted(row):
         """Converts row to dict and encrypts selected columns."""
-        encrypted_columns = ["retailer_name"]  # Define columns to encrypt
+        encrypted_columns = ["product_brand"]  # Define columns to encrypt
         return {
             name: encrypt_with_kms(str(row[i])) if name in encrypted_columns else row[i]
             for i, name in enumerate(column_names)
@@ -395,6 +397,7 @@ def set_etl_log_details(Job_Meta_Details, MySQLConnection):
 def upsert_meta_info(Job_Meta_Details, MySQLConnection):
     #end_time.isoformat(' ')
     Job_Meta_Details.JOB_END_TIME = datetime.now()  #removed ".replace(microsecond=0)" because it was causing troubles in job execution time calculation
+    print(Job_Meta_Details.JOB_START_TIME)
     #job_start_time = datetime.strptime(Job_Meta_Details.JOB_START_TIME, '%Y-%m-%d %H:%M:%S.%f'))
     JOB_EXECUTION_TIME=str(Job_Meta_Details.JOB_END_TIME - Job_Meta_Details.JOB_START_TIME)
     Job_Meta_Details.JOB_EXECUTION_TIME = JOB_EXECUTION_TIME

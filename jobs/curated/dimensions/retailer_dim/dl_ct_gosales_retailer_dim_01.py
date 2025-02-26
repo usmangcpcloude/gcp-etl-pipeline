@@ -169,7 +169,7 @@ if __name__ == "__main__":
         rows_ingested = transformed_df.count()
         job_meta_details.ROWS_INGESTED = rows_ingested
     except Exception as e:
-        record_exception(Job_Meta_Details, e, "Failed during Transforming Data.",MySQLConnection)
+        record_exception(Job_Meta_Details, e, "Failed during Loading Data.",MySQLConnection)
         print("Error Occurred While Transforming Data")
 
     ##############################################################################
