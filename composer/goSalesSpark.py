@@ -18,9 +18,6 @@ PYSPARK_JOBS = [
     ("sales_fact", f"{JOBS_PATH}/curated/facts/sales_fact/dl_ct_gosales_sales_fact_01.py")
 ]
 
-
-
-
 FILES = [
     f"{COMMONS_PATH}/utilities.py",
     f"{COMMONS_PATH}/Job_Meta_Details.py",
