@@ -118,4 +118,10 @@ tl_sm_sales_overview = BashOperator(
 )
 
 # Define DAG Dependencies
-create_batch_id >> raw_tasks >> pyspark_tasks >> tl_sm_sales_overview
+create_batch_id >> raw_tasks  # Ensure all raw extraction tasks complete first
+
+for raw_task in raw_tasks:
+    raw_task >> pyspark_tasks  # Ensure each raw task completes before moving to PySpark
+
+for pyspark_task in pyspark_tasks:
+    pyspark_task >> tl_sm_sales_overview  # Ensure all PySpark tasks complete before final task
