@@ -51,19 +51,29 @@ KMS_KEY_PATH = f"projects/{project}/locations/global/keyRings/{keyring}/cryptoKe
 
 
 
-def bigquery_run(sql_file_path, env,project,batch_id):
+def bigquery_run(sql_file_path, env, project, batch_id):
     """Executes a SQL file on BigQuery"""
     try:
+        from google.cloud import bigquery
+        import sys  # Ensure sys is imported
+        print('I am in QUERY')
+
         client = bigquery.Client()
 
         # Read the SQL file
+
         with open(sql_file_path, "r") as file:
             query = file.read()
-            
-        query = query.format(
-        project=project,
-        env="dp" if env == "prod" else "dd",  # Adjust env for dataset name
-        batch_id=batch_id)    
+
+        # Debug: Print the raw query to check placeholders
+        print("Raw Query Before Formatting:\n", query)
+
+        # Use f-string instead of .format()
+        env_value = "dp" if env == "prod" else "dd"
+        query = query.replace("{project}", project).replace("{env}", env_value).replace("{batch_id}", str(batch_id))
+
+        # Debug: Print the formatted query before execution
+        print("Formatted Query:\n", query)
 
         # Run query
         job = client.query(query)
@@ -74,6 +84,7 @@ def bigquery_run(sql_file_path, env,project,batch_id):
     except Exception as e:
         print(f"Failed to execute SQL file: {e}")
         sys.exit(1)
+
 
 def env_configs(env):
     try:

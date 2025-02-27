@@ -8,6 +8,10 @@ script_dir_format=script_dir
 jobs_dir = os.path.dirname(script_dir)
 project_root = os.path.dirname(jobs_dir)
 sys.path.append(project_root)
+#sys.path.append(jobs_dir)
+print(project_root)
+print(jobs_dir)
+print(script_dir_format)
 from configs.db_configs import *
 from commons.utilities import  *
 from commons.Job_Meta_Details import Job_Meta_Details
@@ -33,14 +37,16 @@ if __name__ == "__main__":
     print("Trying to Open MYSQL connection",flush =True)
     MySQLConnection=openMySQLConnection(mysql_etl_monitoring,project)
     print("MySQLConnection connection successful", flush =True)
+    print(project_root)
+    print(jobs_dir)
+    print(script_dir_format)
     Job_Meta_Details = Job_Meta_Details(batch_id, '-1', None, None, table_name, "SEMANTIC", -1, datetime.now(), None, None, "FAILURE", None, None,None,None, job_name)
 
     try:
-        sql_file_path = os.path.normpath(os.path.join(script_dir_format, use_case, sql_file))
-        project,mysql_etl_monitoring=env_configs(env)
+        sql_file_path = os.path.normpath(os.path.join(jobs_dir, 'jobs', 'semantic'))
+        sql_file_path = os.path.normpath(os.path.join(sql_file_path, use_case, sql_file))
         bigquery_run(sql_file_path, env,project,batch_id)        
         Job_Meta_Details.JOB_STATUS = "SUCCESS"
-        # Upsert (update or insert) job metadata information
         upsert_meta_info(Job_Meta_Details, MySQLConnection)
     except Exception as e:
         print(e)

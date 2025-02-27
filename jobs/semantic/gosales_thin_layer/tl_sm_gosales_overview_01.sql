@@ -3,7 +3,7 @@ truncate table `{project}.{env}_semantic.tl_sales_overview`;
 
 insert into `{project}.{env}_semantic.tl_sales_overview`
 select 
-PARSE_DATE('%m/%d/%Y',sale_date) as sale_date,
+PARSE_DATE('%Y-%m-%d',sale_date) as sale_date,
 rd.retailer_name as retailer_name,
 rd.retailer_type as retailer_type,
 rd.country , 
