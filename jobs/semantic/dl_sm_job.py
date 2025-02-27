@@ -29,7 +29,10 @@ if __name__ == "__main__":
     sql_file_name = os.path.basename(sql_file)
     # Remove the file extension to get the job name
     job_name = os.path.splitext(sql_file_name)[0]
-    MySQLConnection = openMySQLConnection(env)
+    project,region,mysql_etl_monitoring=env_configs(env)
+    print("Trying to Open MYSQL connection",flush =True)
+    MySQLConnection=openMySQLConnection(mysql_etl_monitoring,project)
+    print("MySQLConnection connection successful", flush =True)
     Job_Meta_Details = Job_Meta_Details(batch_id, '-1', None, None, table_name, "SEMANTIC", -1, datetime.now(), None, None, "FAILURE", None, None,None,None, job_name)
 
     try:
