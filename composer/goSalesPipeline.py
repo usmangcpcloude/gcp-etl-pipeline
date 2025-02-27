@@ -46,7 +46,7 @@ default_args = {
 
 # Define DAG
 dag = DAG(
-    "goSalesPipeline",
+    "goSalesUnifiedDag",
     default_args=default_args,
     schedule_interval=None,
     catchup=False
@@ -76,7 +76,7 @@ for source in raw_sources:
             cd {BASE_DIR} && \
             python jobs/raw/dl_rw_job.py gosales gosales {source} dev "{{{{ ti.xcom_pull(task_ids='start_batch', key='batch_id') }}}}"
         """,
-        dag=dag
+        dag=dag 
     )
     raw_tasks.append(task)
 
@@ -99,7 +99,8 @@ for task_name, pyspark_job_uri in PYSPARK_JOBS:
         task_id=task_name,
         job=create_pyspark_job(pyspark_job_uri),
         region=REGION,
-        project_id=PROJECT_ID
+        project_id=PROJECT_ID,
+        dag=dag  
     )
     
     if previous_task:
@@ -115,5 +116,6 @@ tl_sm_sales_overview = BashOperator(
     """,
     dag=dag
 )
+
 # Define DAG Dependencies
 create_batch_id >> raw_tasks >> pyspark_tasks >> tl_sm_sales_overview
